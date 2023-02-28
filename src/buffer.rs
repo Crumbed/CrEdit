@@ -6,7 +6,7 @@ use std::{fs, io::{Write, Error, Stdout, stdin}};
 
 use termion::{terminal_size, cursor::{Goto, Show, self, Hide}, color, input::TermRead};
 
-use crate::{printBlankLine, operation::{ OperationBuffer, Operation, QuickAction }, printStatusBar, save};
+use crate::{printBlankLine, operation::{ OperationBuffer, Operation, QuickAction }, printStatusBar, save, getTextAfterCusor};
 
 
 
@@ -416,33 +416,58 @@ impl Buffer {
 
 // OPERATIONS \\
 impl Buffer {
-    pub fn executeMacro(self: &mut Self, action: QuickAction) -> Result<(), Error> {
+    pub fn executeMacro(self: &mut Self, action: QuickAction) {
         let mut operationBuffer = self.opBuf.clone();
-        operationBuffer.executeMaco(self, action)
+        operationBuffer.executeMacro(self, action);
+        self.opBuf = operationBuffer;
     }
 
 
     pub fn evalOperations(self: &mut Self, out: &mut Stdout) -> Result<(), Error> {
-        let stream = &mut self.opStream;
+        let stream = self.opStream.clone();
         for opr in stream.iter() {
             match opr {
-                Operation::ToInsert, 
-                Operation::Insert(String),
-                Operation::ToNormal, 
-                Operation::EnterCmd, 
-                    
-                Operation::Delete, 
-                Operation::NewLine(Motion), 
-                    
-                Operation::Up,
-                Operation::Down,
-                Operation::Left,
-                Operation::Right,
+                Operation::ToNormal => self.setMode(out, Mode::Normal)?,
+                Operation::EnterCmd => self.setMode(out, Mode::Cmd)?,
+                Operation::ToInsert => self.setMode(out, Mode::Insert)?,
+                Operation::Insert(text) => {
+                    if self.mode != Mode::Insert { self.setMode(out, Mode::Insert)?; }
+                    if !text.contains("\n") { self.insertText(out, text)?; continue; }
+                    let mut firstText = String::new();
+                    let mut secondText = String::new();
+
+                    let mut chars = text.chars();
+                    let mut c = chars.next().unwrap();
+                    while c != '\n' {
+                        firstText.push(c);
+                        c = chars.next().unwrap();
+                    }
+                    if let Some(_) = chars.next() { secondText = chars.collect(); }
+
+                    self.insertText(out, &firstText)?;
+                    self.insertLine(out, &secondText, Motion::Down(1))?; },
+
+                Operation::NewLine(motion) => {
+                    let mut lineText = String::new();
+                    if self.mode == Mode::Insert { 
+                        lineText = getTextAfterCusor(self);
+                        self.lines[self.cPos.y] = String::from(&self.lines[self.cPos.y][..self.cPos.x]);
+                    }
+
+                    self.insertLine(out, &lineText, motion.clone())?; },
+
+                Operation::DeleteChar => { self.deleteChar(out)?; }, 
+                Operation::Delete => todo!(),
+                Operation::Up => self.moveCursor(out, Motion::Up(1))?,
+                Operation::Down => self.moveCursor(out, Motion::Down(1))?,
+                Operation::Left => self.moveCursor(out, Motion::Left(1))?,
+                Operation::Right => self.moveCursor(out, Motion::Right(1))?,
             }
         }
 
-        Ok(())
-    }
+        self.opStream.clear();
+
+        Ok(()) }
 }
 
 

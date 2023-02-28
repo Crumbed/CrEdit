@@ -1,1 +1,1 @@
-/home/runner/CrumbedEdit/target/debug/cred: /home/runner/CrumbedEdit/src/buffer.rs /home/runner/CrumbedEdit/src/main.rs /home/runner/CrumbedEdit/src/operation.rs
+/Users/crumbed/Documents/Projects/Rust/CrEdit/target/debug/cred: /Users/crumbed/Documents/Projects/Rust/CrEdit/src/buffer.rs /Users/crumbed/Documents/Projects/Rust/CrEdit/src/main.rs /Users/crumbed/Documents/Projects/Rust/CrEdit/src/operation.rs

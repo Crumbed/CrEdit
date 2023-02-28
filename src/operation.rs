@@ -17,6 +17,7 @@ pub enum QuickAction {
 
     NAQA,
 }
+
 #[derive(Clone)]
 pub enum Operation {
     ToInsert, 
@@ -25,6 +26,7 @@ pub enum Operation {
     EnterCmd, 
 
     Delete, 
+    DeleteChar, 
     NewLine(Motion), 
 
     Up,
@@ -59,8 +61,6 @@ impl OperationBuffer {
             macStart.push(start);
         }
 
-        // let mut ops = HashMap::from([
-        // ]);
 
         Self {
             imacros, 
@@ -76,45 +76,51 @@ impl OperationBuffer {
 // PUB FUNCS \\ 
 impl OperationBuffer {
     // pub fn checkOperation(self: &mut Self, operation: Operation) {
-        
+
     // }
 
     pub fn startMacro(self: &mut Self, c: char) -> Option<QuickAction> {
         self.currMac.push(c);
         self.lastInp = Instant::now();
-        self.checkMacro(c)
-    }
+        self.checkMacro(c) }
 
     pub fn checkMacro(self: &mut Self, c: char) -> Option<QuickAction> {
-        let mut posMacs = self.imacros.clone();
-        if self.lastInp.elapsed().as_millis() >= 250 { return Some(QuickAction::NAQA); }
-        for i in 0..self.currMac.len() {
-            for imac in posMacs.clone().keys() {
-                let key = imac.chars().nth(i);
-                if let Some(chtr) = key {
-                    if chtr != self.currMac[i] { posMacs.remove(imac); }
-                } else { break; }
-            }
-        }
-        if posMacs.is_empty() { return Some(QuickAction::NAQA); }
+        if self.lastInp.elapsed().as_millis() >= 1000 { return Some(QuickAction::NAQA); }
 
-        for imac in posMacs.keys() {
-            let key = imac.chars().nth(self.currMac.len());
-            if let Some(chtr) = key {
-                if chtr != c { return None; }
-                self.currMac.push(c);
-                self.lastInp = Instant::now();
-                break;
-            } 
+        let mut currMacStr: String = self.currMac
+            .iter()
+            .collect();
+
+        let mut posKeys: Vec<String> = self.imacros
+            .clone()
+            .keys()
+            .cloned()
+            .filter(|k| k.len() >= currMacStr.len())
+            .filter(|k| &k[..currMacStr.len()] == &currMacStr[..])
+            .collect();
+
+        if posKeys.is_empty() { return Some(QuickAction::NAQA); }
+
+        if self.currMac.len() != 1 {
+            currMacStr.push(c);
+            self.currMac.push(c);
+        }
+        self.lastInp = Instant::now();
+        match self.imacros.get(&currMacStr) {
+            Some(action) => return Some(action.clone()),
+            None => (), 
         }
 
-        let currMacStr: String = self.currMac.iter().collect();
-        return match self.imacros.get(&currMacStr) {
-            Some(action) => Some(action.clone()),
-            None => None
-        }
+        posKeys = posKeys.iter()
+            .cloned()
+            .filter(|k| k.len() < self.currMac.len())
+            .collect();
+
+        if posKeys.is_empty() { return Some(QuickAction::NAQA); }
+
+        None
     }
-    
+
     pub fn resetMacro(self: &mut Self) {
         self.currMac.clear();
     }
@@ -122,8 +128,7 @@ impl OperationBuffer {
 
 
 
-    
-    pub fn executeMaco(self: &mut Self, buf: &mut Buffer, action: QuickAction) -> Result<(), Error> {
+    pub fn executeMacro(self: &mut Self, buf: &mut Buffer, action: QuickAction) {
         match action {
             QuickAction::QuickNormal => {
                 buf.opStream.push(Operation::ToNormal);
@@ -132,17 +137,15 @@ impl OperationBuffer {
             QuickAction::MakeBlock => {
                 buf.opStream.push(Operation::Insert("{}".to_string())); // insert mode and add text (auto move cursor)
                 buf.opStream.push(Operation::Left); // move cursor left
-                buf.opStream.push(Operation::NewLine(Motion::Down(1))); // newline down (carry } to newline because insert mode)
+                buf.opStream.push(Operation::NewLine(Motion::Down(1))); // newline down (carry  to newline because insert mode)
                 buf.opStream.push(Operation::ToNormal); // to normal mode
-                buf.opStream.push(Operation::NewLine(Motion::Up(1))); // newline up (dont carry } because normal mode)
+                buf.opStream.push(Operation::NewLine(Motion::Up(1))); // newline up (dont carry  because normal mode)
                 buf.opStream.push(Operation::Insert("    ".to_string())); // insert mode and add text (auto move cursor)
                 self.resetMacro();
             },
 
             _ => todo!(),
         }
-
-        Ok(())
     }
 
 }

@@ -62,6 +62,8 @@ fn main() -> Result<(), Error>{
     out.flush()?;
 
     while buf.running {
+        buf.evalOperations(&mut out)?;
+
         if buf.update {
             printStatusBar(&mut out, &mut buf)?;
             buf.restoreCursor(&mut out)?;
@@ -146,36 +148,51 @@ fn main() -> Result<(), Error>{
                         _=>(), },
                     Mode::Insert => { 
                         // WORK ON MACROS \\
-                        let opBuf = &mut buf.opBuf; 
-                        if opBuf.currMac.is_empty() {
-                            if opBuf.macStart.contains(&c) {  
-                                match opBuf.startMacro(c) {
-                                    Some(action) => {
-                                        if action == QuickAction::NAQA {
-                                            // add literal chars
-                                            // reset macro
-                                        } else {
-                                            buf.executeMacro(action)?;
-                                            continue;
-                                        }
-                                    },
-                                    None => (),
-                                }
+                        // let opBuf = &mut buf.opBuf; 
+                        // if opBuf.currMac.is_empty() {
+                        //     if opBuf.macStart.contains(&c) {  
+                        //         match opBuf.startMacro(c) {
+                        //             Some(action) => {
+                        //                 if action == QuickAction::NAQA {
+                        //                     opBuf.resetMacro();
+                        //                 } else {
+                        //                     buf.executeMacro(action)?;
+                        //                     continue;
+                        //                 }
+                        //             },
+                        //             None => (),
+                        //         }
+                        //     }
+                        // } else {
+                        //     match opBuf.checkMacro(c) {
+                        //         Some(action) => {
+                        //             if action == QuickAction::NAQA {
+                        //                 opBuf.resetMacro();
+                        //             } else {
+                        //                 buf.executeMacro(action)?;
+                        //                 continue;
+                        //             }
+                        //         },
+                        //         None => (),
+                        //     }
+                        // }
+
+                        if buf.opBuf.currMac.is_empty() { (|| {
+                            if !buf.opBuf.macStart.contains(&c) { return; }
+                            if let Some(action) = buf.opBuf.startMacro(c) {
+                                if action == QuickAction::NAQA { /*buf.opBuf.resetMacro();*/ return; }
+                                buf.executeMacro(action);
                             }
-                        } else {
-                            match opBuf.checkMacro(c) {
-                                Some(action) => {
-                                    if action == QuickAction::NAQA {
-                                        // add literal chars
-                                        // reset macro
-                                    } else {
-                                        buf.executeMacro(action)?;
-                                        continue;
-                                    }
-                                },
-                                None => (),
+                        })(); } else { (|| {
+                            if let Some(action) = buf.opBuf.checkMacro(c) {
+                                if action == QuickAction::NAQA { /*buf.opBuf.resetMacro();*/ return; }
+                                buf.executeMacro(action);
                             }
-                        }
+                        })(); }
+                            
+                                
+                            
+                        
         
                         match c {
                             '\n' => {
@@ -217,7 +234,7 @@ pub fn printStatusBar(out: &mut Stdout, buf: &mut Buffer) -> Result<(), Error> {
     let fileName = format!("| {} | ", buf.path.split("/").last().unwrap());
     let mode = format!("{:?}", buf.mode);
 
-    write!(out, "{}{}{}{}{}{}{}{}{}{}{}{}", 
+    write!(out, "{}{}{}{}{}{}{}{}{}{}{}{}{}{}", 
         Hide, 
         color::Fg(color::White), 
         Goto(1, buf.size.y as u16), 
@@ -227,6 +244,8 @@ pub fn printStatusBar(out: &mut Stdout, buf: &mut Buffer) -> Result<(), Error> {
         mode, 
         Goto(mode.len() as u16+3, buf.size.y as u16), 
         format!("({}, {}), {}", buf.cPos.x, buf.cPos.y, buf.visualX), 
+        Goto(20, buf.size.y as u16), 
+        format!("{:?}", buf.opBuf.currMac), 
         Goto((buf.size.x - fileName.len()) as u16, buf.size.y as u16), 
         fileName, 
         NoInvert, 
@@ -253,7 +272,7 @@ pub fn save(buf: &mut Buffer) -> Result<bool, Error> {
     }
     Ok(true)
 }
-fn getTextAfterCusor(buf: &mut Buffer) -> String {
+pub fn getTextAfterCusor(buf: &mut Buffer) -> String {
     let (x, y) = (buf.cPos.x, buf.cPos.y); 
     let line = buf.lines[y].clone();
     if x >= line.len() || line.len() == 0 { return String::from(""); }
