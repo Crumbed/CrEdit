@@ -1,6 +1,6 @@
 [package]
-name = "cred"
-version = "0.1.0"
+name = "ced"
+version = "0.0.3"
 authors = ["runner"]
 edition = "2021"
 

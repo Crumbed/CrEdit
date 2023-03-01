@@ -82,10 +82,13 @@ impl OperationBuffer {
     pub fn startMacro(self: &mut Self, c: char) -> Option<QuickAction> {
         self.currMac.push(c);
         self.lastInp = Instant::now();
-        self.checkMacro(c) }
+        return self.imacros.get(&String::from(c)).cloned();
+    }
 
     pub fn checkMacro(self: &mut Self, c: char) -> Option<QuickAction> {
-        if self.lastInp.elapsed().as_millis() >= 1000 { return Some(QuickAction::NAQA); }
+        if self.lastInp.elapsed().as_millis() >= 250 {
+            self.currMac.push(c);
+            return Some(QuickAction::NAQA); }
 
         let mut currMacStr: String = self.currMac
             .iter()
@@ -101,10 +104,8 @@ impl OperationBuffer {
 
         if posKeys.is_empty() { return Some(QuickAction::NAQA); }
 
-        if self.currMac.len() != 1 {
-            currMacStr.push(c);
-            self.currMac.push(c);
-        }
+        currMacStr.push(c);
+        self.currMac.push(c);
         self.lastInp = Instant::now();
         match self.imacros.get(&currMacStr) {
             Some(action) => return Some(action.clone()),
@@ -124,7 +125,6 @@ impl OperationBuffer {
     pub fn resetMacro(self: &mut Self) {
         self.currMac.clear();
     }
-
 
 
 
@@ -149,3 +149,26 @@ impl OperationBuffer {
     }
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

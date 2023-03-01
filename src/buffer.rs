@@ -1,12 +1,13 @@
 #![allow(nonstandard_style)]
 #![allow(unused_imports)]
 #![allow(unused_mut)]
+#![allow(unreachable_patterns)]
 
 use std::{fs, io::{Write, Error, Stdout, stdin}};
 
 use termion::{terminal_size, cursor::{Goto, Show, self, Hide}, color, input::TermRead};
 
-use crate::{printBlankLine, operation::{ OperationBuffer, Operation, QuickAction }, printStatusBar, save, getTextAfterCusor};
+use crate::{printBlankLine, operation::{ OperationBuffer, Operation, QuickAction }, printStatusBar, save, getTextAfterCusor, line::Line};
 
 
 
@@ -47,7 +48,7 @@ pub struct Buffer {
     pub mode    :   Mode, 
     pub size    :   Vec2<usize>, 
     pub center  :   u16, 
-    pub lines   :   Vec<String>,
+    pub lines   :   Vec<Line>,
     pub cPos    :   Vec2<usize>, 
     pub visualX :   u16, 
     pub relNums :   Vec<String>, 
@@ -70,7 +71,13 @@ impl Buffer {
             }
         };
         let path = path.to_string();
-        let lines: Vec<String> = lines.lines().map(|it| it.into()).collect();
+        let strLines: Vec<String> = lines.lines().map(|it| it.into()).collect();
+        let lines: Vec<Line> = Vec::new();
+
+        for l in strLines {
+            let mut line = Line::new(0);
+            if !l.is_empty() { line = Line::from(0, &l); }
+        }
 
         let (x, mut y) = terminal_size()?;
         if y % 2 != 0 { y -= 1; } /*else { y -= 3; }*/
@@ -110,7 +117,7 @@ impl Buffer {
         let path = String::new();
         let mode = Mode::Normal;
 
-        let lines = vec![String::new()];
+        let lines = vec![Line::new(0)];
 
         let (x, mut y) = terminal_size()?;
         if y % 2 != 0 { y -= 1; } else { y -= 2; }
@@ -171,7 +178,7 @@ impl Buffer {
     }
 }
 
-// PUB FUNCS \\ 
+// PUB METHODS \\ 
 impl Buffer {
     // ADDING \\
     pub fn insertChar(self: &mut Self, out: &mut Stdout, c: char) -> Result<(), Error> {
@@ -179,12 +186,12 @@ impl Buffer {
         let line = &mut self.lines[self.cPos.y];
 
         if self.cPos.x >= line.len() {
-            line.push(c);
+            line.add(c);
             self.cPos.x = line.len();
             self.drawCurrLine(out)?;
             return Ok(()); }
 
-        line.insert(self.cPos.x, c); 
+        line.ins(self.cPos.x, c); 
         self.drawCurrLine(out)?;
         Ok(()) }
     pub fn insertText(self: &mut Self, out: &mut Stdout, text: &str) -> Result<(), Error> {
@@ -462,6 +469,8 @@ impl Buffer {
                 Operation::Down => self.moveCursor(out, Motion::Down(1))?,
                 Operation::Left => self.moveCursor(out, Motion::Left(1))?,
                 Operation::Right => self.moveCursor(out, Motion::Right(1))?,
+
+                _=>(),
             }
         }
 

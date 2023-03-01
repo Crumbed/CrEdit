@@ -2,6 +2,7 @@
 #![allow(unused_imports)]
 #![allow(unused_mut)]
 
+mod line;
 mod buffer;
 mod operation;
 
@@ -20,12 +21,12 @@ use termion::{
 
 
 const NAME: &str = "CED - Crumbed Edit";
-const VERSION: &str = "Version: a0.2";
+const VERSION: &str = "Version: a0.3";
 const AUTHOR: &str = "by, CrumbedDev : Kai Harrelson";
 const DESC: &str = "Ced is a NeoVim alternative and is open source";
 
 
-fn main() -> Result<(), Error>{
+fn main() -> Result<(), Error> {
     let mut out = stdout()
         .into_alternate_screen()?
         .into_raw_mode()?;
@@ -147,48 +148,38 @@ fn main() -> Result<(), Error>{
 
                         _=>(), },
                     Mode::Insert => { 
-                        // WORK ON MACROS \\
-                        // let opBuf = &mut buf.opBuf; 
-                        // if opBuf.currMac.is_empty() {
-                        //     if opBuf.macStart.contains(&c) {  
-                        //         match opBuf.startMacro(c) {
-                        //             Some(action) => {
-                        //                 if action == QuickAction::NAQA {
-                        //                     opBuf.resetMacro();
-                        //                 } else {
-                        //                     buf.executeMacro(action)?;
-                        //                     continue;
-                        //                 }
-                        //             },
-                        //             None => (),
-                        //         }
-                        //     }
-                        // } else {
-                        //     match opBuf.checkMacro(c) {
-                        //         Some(action) => {
-                        //             if action == QuickAction::NAQA {
-                        //                 opBuf.resetMacro();
-                        //             } else {
-                        //                 buf.executeMacro(action)?;
-                        //                 continue;
-                        //             }
-                        //         },
-                        //         None => (),
-                        //     }
-                        // }
+                        //
 
-                        if buf.opBuf.currMac.is_empty() { (|| {
-                            if !buf.opBuf.macStart.contains(&c) { return; }
+                        if buf.opBuf.currMac.is_empty() { if (|| {
+                            if !buf.opBuf.macStart.contains(&c) { return false; }
                             if let Some(action) = buf.opBuf.startMacro(c) {
-                                if action == QuickAction::NAQA { /*buf.opBuf.resetMacro();*/ return; }
+                                if action == QuickAction::NAQA {
+                                    buf.opStream.push(operation::Operation::Insert( buf.opBuf.currMac
+                                        .iter()
+                                        .cloned()
+                                        .collect()));
+                                    buf.opBuf.resetMacro(); 
+                                    return true;
+                                }
                                 buf.executeMacro(action);
                             }
-                        })(); } else { (|| {
+                            true
+                        })() { continue; } } 
+
+                        else { if (|| {
                             if let Some(action) = buf.opBuf.checkMacro(c) {
-                                if action == QuickAction::NAQA { /*buf.opBuf.resetMacro();*/ return; }
+                                if action == QuickAction::NAQA {
+                                    buf.opStream.push(operation::Operation::Insert( buf.opBuf.currMac
+                                        .iter()
+                                        .cloned()
+                                        .collect()));
+                                    buf.opBuf.resetMacro();
+                                    return true;
+                                }
                                 buf.executeMacro(action);
                             }
-                        })(); }
+                            true
+                        })() { continue; } }
                             
                                 
                             
