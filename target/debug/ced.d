@@ -1,0 +1,1 @@
+/Users/crumbed/Documents/Projects/Rust/CrEdit/target/debug/ced: /Users/crumbed/Documents/Projects/Rust/CrEdit/src/buffer.rs /Users/crumbed/Documents/Projects/Rust/CrEdit/src/main.rs /Users/crumbed/Documents/Projects/Rust/CrEdit/src/operation.rs
