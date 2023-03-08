@@ -7,7 +7,7 @@ use std::{fs, io::{Write, Error, Stdout, stdin}};
 
 use termion::{terminal_size, cursor::{Goto, Show, self, Hide}, color, input::TermRead};
 
-use crate::{printBlankLine, operation::{ OperationBuffer, Operation, QuickAction }, printStatusBar, save, getTextAfterCusor, line::Line};
+use crate::{printBlankLine, operation::{ OperationBuffer, Operation, QuickAction }, printStatusBar, save, getTextAfterCusor};
 
 
 
@@ -48,7 +48,7 @@ pub struct Buffer {
     pub mode    :   Mode, 
     pub size    :   Vec2<usize>, 
     pub center  :   u16, 
-    pub lines   :   Vec<Line>,
+    pub lines   :   Vec<String>,
     pub cPos    :   Vec2<usize>, 
     pub visualX :   u16, 
     pub relNums :   Vec<String>, 
@@ -71,13 +71,7 @@ impl Buffer {
             }
         };
         let path = path.to_string();
-        let strLines: Vec<String> = lines.lines().map(|it| it.into()).collect();
-        let lines: Vec<Line> = Vec::new();
-
-        for l in strLines {
-            let mut line = Line::new(0);
-            if !l.is_empty() { line = Line::from(0, &l); }
-        }
+        let lines: Vec<String> = lines.lines().map(|it| it.into()).collect();
 
         let (x, mut y) = terminal_size()?;
         if y % 2 != 0 { y -= 1; } /*else { y -= 3; }*/
@@ -117,7 +111,7 @@ impl Buffer {
         let path = String::new();
         let mode = Mode::Normal;
 
-        let lines = vec![Line::new(0)];
+        let lines = vec![String::new()];
 
         let (x, mut y) = terminal_size()?;
         if y % 2 != 0 { y -= 1; } else { y -= 2; }
@@ -186,12 +180,12 @@ impl Buffer {
         let line = &mut self.lines[self.cPos.y];
 
         if self.cPos.x >= line.len() {
-            line.add(c);
+            line.push(c);
             self.cPos.x = line.len();
             self.drawCurrLine(out)?;
             return Ok(()); }
 
-        line.ins(self.cPos.x, c); 
+        line.insert(self.cPos.x, c); 
         self.drawCurrLine(out)?;
         Ok(()) }
     pub fn insertText(self: &mut Self, out: &mut Stdout, text: &str) -> Result<(), Error> {
